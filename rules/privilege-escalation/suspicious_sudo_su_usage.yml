@@ -1,0 +1,53 @@
+title: Suspicious Privilege Escalation via Sudo or Su
+id: 7a3f2e01-d4c8-4b91-a1f3-5e8c9d2b4a06
+status: experimental
+description: |
+    Detects the use of sudo or su to escalate privileges to root, particularly from
+    accounts that do not typically perform administrative actions. On compromised Linux
+    systems, adversaries who have gained access as a low-privilege user will attempt to
+    escalate using sudo (if the user has sudoer rights) or su (if they've obtained the
+    root password). This rule is most effective when tuned to exclude known admin accounts
+    that routinely use sudo.
+references:
+    - https://attack.mitre.org/techniques/T1548/003/
+    - https://attack.mitre.org/techniques/T1078/003/
+author: jawsec
+date: 2026/04/01
+modified: 2026/04/01
+tags:
+    - attack.privilege_escalation
+    - attack.t1548.003
+    - attack.t1078.003
+logsource:
+    product: linux
+    service: syslog
+detection:
+    selection_sudo:
+        message|contains: 'sudo:'
+        message|contains:
+            - 'COMMAND='
+    selection_su:
+        message|contains:
+            - 'su: pam_unix'
+            - 'su: (to root)'
+            - 'su:session'
+    filter_known_admins:
+        message|contains:
+            - 'root : TTY'  # Root using sudo as root (normal)
+    condition: (selection_sudo or selection_su) and not filter_known_admins
+falsepositives:
+    - System administrators performing routine maintenance
+    - Automated scripts that legitimately require sudo (backup scripts, update scripts)
+    - Cron jobs that execute with sudo privileges
+    - Configuration management agents (Ansible uses sudo by default)
+level: medium
+# ---
+# TESTING METHODOLOGY
+# To trigger this rule in a lab environment:
+#   1. Log in as a non-root user on a Linux test system
+#   2. Run: sudo whoami
+#   3. Or run: su - root  (enter root password)
+#   4. Check /var/log/auth.log or /var/log/secure for the sudo/su entry
+#   5. Confirm your SIEM fires the alert
+# Tuning: Add your known admin usernames to filter_known_admins to reduce noise.
+# Expected result: Alert fires on any sudo command execution or su to root

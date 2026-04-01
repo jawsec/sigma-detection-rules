@@ -1,0 +1,41 @@
+title: Windows Event Log Cleared
+id: 7a3f2e01-d4c8-4b91-a1f3-5e8c9d2b4a08
+status: experimental
+description: |
+    Detects when a Windows event log is cleared, either via wevtutil.exe, PowerShell's
+    Clear-EventLog cmdlet, or the native Event Viewer. Log clearing is a hallmark of
+    defense evasion — adversaries clear logs to destroy evidence of their activity after
+    gaining access, escalating privileges, or executing payloads. There is almost never
+    a legitimate reason to clear security logs on a production system. This event should
+    be treated as high-confidence malicious activity until proven otherwise.
+references:
+    - https://attack.mitre.org/techniques/T1070/001/
+author: jawsec
+date: 2026/04/01
+modified: 2026/04/01
+tags:
+    - attack.defense_evasion
+    - attack.t1070.001
+logsource:
+    product: windows
+    service: security
+detection:
+    selection_security_log_cleared:
+        EventID: 1102  # Audit log was cleared
+    condition: selection_security_log_cleared
+falsepositives:
+    - System administrators performing log maintenance (should use log rotation, not clearing)
+    - Disk space emergencies where logs are consuming all available storage
+    - Misconfigured group policies that clear logs on a schedule (fix the policy)
+level: critical
+# ---
+# TESTING METHODOLOGY
+# To trigger this rule in a lab environment:
+#   1. Open an elevated Command Prompt
+#   2. Run: wevtutil cl Security
+#   3. Note: This clears the actual Security log — only do this on a lab machine
+#   4. Event ID 1102 is generated in the Security log BEFORE it is cleared
+#      (Windows guarantees this event is written before the clear completes)
+#   5. Confirm your SIEM captures Event ID 1102
+# Alternative (less destructive): wevtutil cl Application (clears Application log instead)
+# Expected result: Alert fires immediately with critical severity

@@ -1,0 +1,70 @@
+title: SSH Login from External or Unusual Source IP
+id: 7a3f2e01-d4c8-4b91-a1f3-5e8c9d2b4a02
+status: experimental
+description: |
+    Detects successful SSH logins originating from non-RFC1918 (public) IP addresses.
+    In most home and small business environments, SSH access should only originate from
+    internal network addresses. A successful login from an external IP could indicate
+    a compromised credential, exposed SSH service, or an attacker who has already obtained
+    valid keys. This rule is intentionally broad — environments with legitimate remote SSH
+    access should tune the filter to exclude known IPs.
+references:
+    - https://attack.mitre.org/techniques/T1078/004/
+    - https://attack.mitre.org/techniques/T1021/004/
+author: jawsec
+date: 2026/04/01
+modified: 2026/04/01
+tags:
+    - attack.initial_access
+    - attack.t1078.004
+    - attack.lateral_movement
+    - attack.t1021.004
+logsource:
+    product: linux
+    service: sshd
+detection:
+    selection:
+        sshd_event: accepted
+    filter_internal_rfc1918:
+        src_ip|startswith:
+            - '10.'
+            - '192.168.'
+            - '172.16.'
+            - '172.17.'
+            - '172.18.'
+            - '172.19.'
+            - '172.20.'
+            - '172.21.'
+            - '172.22.'
+            - '172.23.'
+            - '172.24.'
+            - '172.25.'
+            - '172.26.'
+            - '172.27.'
+            - '172.28.'
+            - '172.29.'
+            - '172.30.'
+            - '172.31.'
+    filter_localhost:
+        src_ip|startswith:
+            - '127.'
+            - '::1'
+    condition: selection and not filter_internal_rfc1918 and not filter_localhost
+falsepositives:
+    - Administrators who legitimately SSH from home or while traveling
+    - VPN exit nodes that present a public IP to the SSH server
+    - Cloud-hosted jump boxes with public IPs used as bastion hosts
+    - Automated deployment tools (Ansible, Terraform) running from CI/CD with public IPs
+level: medium
+# ---
+# TESTING METHODOLOGY
+# To trigger this rule in a lab environment:
+#   1. Ensure SSH is running on the target Linux host (systemctl status sshd)
+#   2. From an external IP (or simulate one by NATing through your router's WAN):
+#      ssh testuser@TARGET_IP
+#   3. Successfully authenticate
+#   4. Check /var/log/auth.log for the "Accepted" line with the source IP
+#   5. Confirm your SIEM ingests the log and fires the alert
+# Expected result: Alert fires for any successful SSH login from a non-RFC1918 source
+# To test without real external access: temporarily modify the rule to alert on
+# a specific internal IP, then SSH from that host to validate the pipeline works.

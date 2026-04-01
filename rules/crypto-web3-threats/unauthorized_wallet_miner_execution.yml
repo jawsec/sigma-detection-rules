@@ -1,0 +1,78 @@
+title: Unauthorized Cryptocurrency Wallet Software Execution
+id: 7a3f2e01-d4c8-4b91-a1f3-5e8c9d2b4a13
+status: experimental
+description: |
+    Detects execution of cryptocurrency wallet applications and mining software that are
+    not typically authorized in corporate or monitored environments. The presence of wallet
+    software on an endpoint could indicate an insider threat (unauthorized crypto activity
+    on company hardware), a compromised system being used as a staging point for stolen
+    funds, or the installation of a trojanized wallet application (a common attack vector
+    where fake wallet apps steal private keys). Mining software execution is almost always
+    unauthorized outside of personal systems.
+references:
+    - https://attack.mitre.org/techniques/T1496/
+    - https://attack.mitre.org/techniques/T1204/002/
+author: jawsec
+date: 2026/04/01
+modified: 2026/04/01
+tags:
+    - attack.impact
+    - attack.t1496
+    - attack.execution
+    - attack.t1204.002
+    - crypto.web3
+logsource:
+    category: process_creation
+    product: windows
+detection:
+    selection_wallet_apps:
+        Image|endswith:
+            - '\Exodus.exe'
+            - '\atomic.exe'          # Atomic Wallet
+            - '\Electrum.exe'
+            - '\Wasabi Wallet.exe'
+            - '\Sparrow.exe'
+            - '\Ledger Live.exe'
+            - '\Trezor Suite.exe'
+            - '\MetaMask.exe'
+            - '\Phantom.exe'
+            - '\Trust Wallet.exe'
+    selection_miners:
+        Image|endswith:
+            - '\xmrig.exe'
+            - '\PhoenixMiner.exe'
+            - '\nbminer.exe'
+            - '\t-rex.exe'
+            - '\lolMiner.exe'
+            - '\gminer.exe'
+            - '\TeamRedMiner.exe'
+            - '\nanominer.exe'
+            - '\ethminer.exe'
+            - '\bfgminer.exe'
+            - '\cgminer.exe'
+    selection_miner_indicators:
+        CommandLine|contains:
+            - '-o stratum+tcp'
+            - '-o stratum+ssl'
+            - '--algo'
+            - '--pool'
+            - '--coin'
+            - 'nicehash'
+    condition: selection_wallet_apps or selection_miners or selection_miner_indicators
+falsepositives:
+    - Employees who have legitimate personal crypto wallets on BYOD devices
+    - IT administrators who installed Ledger Live or Trezor Suite for company treasury management
+    - Development teams building or testing crypto applications
+level: medium
+# ---
+# TESTING METHODOLOGY
+# To trigger this rule in a lab environment:
+#   1. Ensure Sysmon is capturing process creation (Event ID 1)
+#   2. Download a legitimate miner (xmrig) or wallet app to a test machine
+#   3. Execute it briefly — it does not need to connect to anything
+#   4. Or simulate: rename any .exe to "xmrig.exe" and execute it
+#   5. Verify Sysmon Event ID 1 captures the process with the matching image name
+#   6. Confirm your SIEM fires the alert
+#   7. Clean up: delete the test binary
+# For command-line testing: cmd /c echo test -o stratum+tcp://pool.test.com
+# Expected result: Alert fires on process name match or stratum command-line arguments

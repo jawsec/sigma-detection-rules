@@ -1,0 +1,64 @@
+title: Connection to Known Cryptomining Pool
+id: 7a3f2e01-d4c8-4b91-a1f3-5e8c9d2b4a11
+status: experimental
+description: |
+    Detects DNS queries or network connections to known cryptocurrency mining pool domains.
+    Unauthorized cryptomining (cryptojacking) is one of the most common post-compromise
+    activities — adversaries monetize access by installing miners that consume CPU/GPU
+    resources while generating revenue. This affects both servers and workstations. Mining
+    pool connections are high-confidence indicators because legitimate users rarely connect
+    to these domains from corporate or home systems without explicitly configuring a miner.
+references:
+    - https://attack.mitre.org/techniques/T1496/
+author: jawsec
+date: 2026/04/01
+modified: 2026/04/01
+tags:
+    - attack.impact
+    - attack.t1496
+    - crypto.web3
+logsource:
+    category: dns_query
+    product: windows
+detection:
+    selection:
+        QueryName|endswith:
+            # Major mining pools
+            - '.nanopool.org'
+            - '.2miners.com'
+            - '.f2pool.com'
+            - '.poolin.com'
+            - '.antpool.com'
+            - '.viabtc.com'
+            - '.ethermine.org'
+            - '.flexpool.io'
+            - '.nicehash.com'
+            - '.minergate.com'
+            - '.unmineable.com'
+            - '.hashvault.pro'
+            - '.moneroocean.stream'
+            - '.herominers.com'
+            - '.supportxmr.com'
+            - '.minexmr.com'
+            - '.xmrpool.eu'
+            - '.miningpoolhub.com'
+            - '.prohashing.com'
+            # Stratum protocol indicators
+            - '.stratum.slushpool.com'
+            - '.stratum.braiins.com'
+    condition: selection
+falsepositives:
+    - Users who intentionally mine cryptocurrency on their own hardware (should be policy-documented)
+    - Security researchers analyzing mining malware samples in a sandbox
+    - DNS prefetch or browser speculative connections from visiting crypto-related websites
+level: high
+# ---
+# TESTING METHODOLOGY
+# To trigger this rule in a lab environment:
+#   1. Ensure Sysmon is capturing DNS queries (Event ID 22) or you have DNS logging enabled
+#   2. Run: nslookup test.nanopool.org
+#   3. Or: ping ethermine.org (does not need to succeed — the DNS query is what matters)
+#   4. Verify Sysmon Event ID 22 or DNS server logs capture the query
+#   5. Confirm your SIEM fires the alert
+# Expected result: Alert fires on any DNS resolution attempt to a mining pool domain
+# NOTE: Maintain and update the domain list periodically. New mining pools emerge regularly.

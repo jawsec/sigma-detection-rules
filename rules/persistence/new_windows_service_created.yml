@@ -1,0 +1,54 @@
+title: New Windows Service Created via Command Line
+id: 7a3f2e01-d4c8-4b91-a1f3-5e8c9d2b4a03
+status: experimental
+description: |
+    Detects the creation of new Windows services using sc.exe or PowerShell's
+    New-Service cmdlet. Adversaries commonly install malicious services for persistence
+    because services survive reboots, run as SYSTEM by default, and blend into the noise
+    of legitimate Windows services. This is one of the most reliable persistence mechanisms
+    on Windows and a strong indicator of post-exploitation activity when observed outside
+    of expected change windows.
+references:
+    - https://attack.mitre.org/techniques/T1543/003/
+    - https://attack.mitre.org/techniques/T1569/002/
+author: jawsec
+date: 2026/04/01
+modified: 2026/04/01
+tags:
+    - attack.persistence
+    - attack.t1543.003
+    - attack.privilege_escalation
+    - attack.t1569.002
+logsource:
+    category: process_creation
+    product: windows
+detection:
+    selection_sc:
+        Image|endswith: '\sc.exe'
+        CommandLine|contains:
+            - 'create'
+            - 'config'
+    selection_powershell:
+        Image|endswith:
+            - '\powershell.exe'
+            - '\pwsh.exe'
+        CommandLine|contains: 'New-Service'
+    condition: selection_sc or selection_powershell
+falsepositives:
+    - Legitimate software installers that create services during setup
+    - System administrators manually creating services for in-house tools
+    - Configuration management tools (SCCM, Intune, Chef, Puppet) deploying services
+    - Endpoint protection or RMM agents installing their own service components
+level: high
+# ---
+# TESTING METHODOLOGY
+# To trigger this rule in a lab environment:
+#   1. Open an elevated Command Prompt on a Windows test machine
+#   2. Run: sc create TestSvc binPath= "C:\Windows\System32\cmd.exe" start= demand
+#   3. Verify Sysmon Event ID 1 (Process Create) captures the sc.exe execution
+#   4. Confirm your SIEM fires the alert
+#   5. Clean up: sc delete TestSvc
+# Alternative PowerShell test:
+#   New-Service -Name "TestSvc" -BinaryPathName "C:\Windows\System32\cmd.exe"
+#   Remove-Service -Name "TestSvc"
+# Expected result: Alert fires on the sc.exe create or New-Service command

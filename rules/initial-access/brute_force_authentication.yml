@@ -1,0 +1,46 @@
+title: Brute Force Authentication - Multiple Failed Logins from Single Source
+id: 7a3f2e01-d4c8-4b91-a1f3-5e8c9d2b4a01
+status: experimental
+description: |
+    Detects multiple failed login attempts from a single source IP within a short time window.
+    This is a strong indicator of credential stuffing or brute force attacks against authentication
+    services. Adversaries frequently automate login attempts using stolen credential lists or
+    common password dictionaries. Early detection allows defenders to block the source before
+    a successful compromise.
+references:
+    - https://attack.mitre.org/techniques/T1110/
+    - https://github.com/jawsec/sigma-detection-rules
+author: jawsec
+date: 2026/04/01
+modified: 2026/04/01
+tags:
+    - attack.initial_access
+    - attack.t1110
+    - attack.t1110.001
+    - attack.t1110.003
+logsource:
+    category: authentication
+    product: windows
+detection:
+    selection:
+        EventID:
+            - 4625  # Failed logon
+    filter_machine_accounts:
+        TargetUserName|endswith: '$'
+    condition: selection and not filter_machine_accounts | count(SourceNetworkAddress) by TargetUserName > 10
+    timeframe: 5m
+falsepositives:
+    - Misconfigured service accounts repeatedly failing authentication
+    - Automated monitoring tools performing health checks with expired credentials
+    - Users who genuinely forgot their password and try multiple variations quickly
+    - Vulnerability scanners running authenticated scans with stale credentials
+level: high
+# ---
+# TESTING METHODOLOGY
+# To trigger this rule in a lab environment:
+#   1. Open a Windows command prompt or PowerShell on a separate machine
+#   2. Run: for /L %i in (1,1,15) do net use \\TARGET\C$ /user:testuser wrongpass%i
+#   3. This generates 15 failed logon events (EventID 4625) against the target
+#   4. Verify events appear in Event Viewer > Security log
+#   5. Confirm your SIEM fires the alert within the 5-minute window
+# Expected result: Alert fires after the 10th failed attempt from the same source IP
