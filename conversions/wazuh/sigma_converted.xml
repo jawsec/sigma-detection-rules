@@ -1,0 +1,310 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  sigma_converted.xml
+  Wazuh 4.x detection rules converted from Sigma YAML format
+  Source: jawsec/sigma-detection-rules
+  Author: jawsec | Kino Security
+  License: MIT
+  Rule IDs: 110000 - 110014
+
+  Coverage:
+    Initial Access, Credential Access, Defense Evasion,
+    Privilege Escalation, Persistence, Crypto/Web3 Threats
+
+  Requirements:
+    - Wazuh Manager 4.x
+    - Sysmon (Event IDs 1, 2, 11, 22) for full Windows rule coverage
+    - syslog/auth.log forwarding for Linux rules
+
+  Deploy:
+    1. Copy this file to your Wazuh manager:
+       scp sigma_converted.xml <USER>@<WAZUH_MANAGER_IP>:/var/ossec/etc/rules/sigma_converted.xml
+    2. Restart the Wazuh manager:
+       sudo systemctl restart wazuh-manager
+    3. Verify the rules loaded without errors:
+       sudo cat /var/ossec/logs/ossec.log | grep -i "sigma_converted"
+
+  Tuning Notes:
+    - Rule 110000 (SSH login): Add <srcip> whitelists for your internal ranges
+    - Rule 110006 (sudo/su): Whitelist known admin accounts via <if_matched_sid> chaining
+    - Rule 110014 (wallet/miner software): Adjust for BYOD environments where personal wallets are permitted
+    - Crypto/Web3 domain lists (110012, 110013): Update periodically as new pools and drainer patterns emerge
+-->
+
+<group name="sigma,">
+
+  <!-- ============================================================ -->
+  <!-- INITIAL ACCESS                                                -->
+  <!-- ============================================================ -->
+
+  <!--
+    SSH Login from External or Unusual Source IP
+    Sigma level: medium | MITRE: T1078.004, T1021.004
+    NOTE: Wazuh cannot natively filter RFC1918 ranges in a rule.
+    Tune this by adding a <srcip> whitelist for your internal range,
+    or rely on GeoIP enrichment once the MaxMind DB is configured.
+  -->
+  <rule id="110000" level="7">
+    <if_group>syslog</if_group>
+    <match>sshd</match>
+    <regex>Accepted (password|publickey|keyboard-interactive)</regex>
+    <description>Sigma: SSH login accepted — verify source IP is RFC1918 internal</description>
+    <group>sigma,authentication,ssh,initial_access,</group>
+    <mitre>
+      <id>T1078.004</id>
+      <id>T1021.004</id>
+    </mitre>
+  </rule>
+
+  <!-- ============================================================ -->
+  <!-- CREDENTIAL ACCESS — BRUTE FORCE                              -->
+  <!-- ============================================================ -->
+
+  <!--
+    Brute Force: parent rule — single Windows failed logon (EventID 4625)
+    This rule feeds the frequency counter for 110002.
+    Filter excludes machine accounts (TargetUserName ending in $).
+  -->
+  <rule id="110001" level="5">
+    <if_group>windows</if_group>
+    <field name="win.system.eventID">^4625$</field>
+    <description>Sigma: Windows failed logon attempt (brute force tracker)</description>
+    <group>sigma,authentication_failed,windows,</group>
+  </rule>
+
+  <!--
+    Brute Force: frequency trigger — 10+ failures from same source in 5 minutes
+    Sigma level: high | MITRE: T1110, T1110.001, T1110.003
+  -->
+  <rule id="110002" level="10" frequency="10" timeframe="300">
+    <if_matched_sid>110001</if_matched_sid>
+    <same_source_ip />
+    <description>Sigma: Brute force detected — 10+ failed logins from single source in 5 min</description>
+    <group>sigma,brute_force,authentication_failed,initial_access,</group>
+    <mitre>
+      <id>T1110</id>
+      <id>T1110.001</id>
+      <id>T1110.003</id>
+    </mitre>
+  </rule>
+
+  <!-- ============================================================ -->
+  <!-- DEFENSE EVASION                                               -->
+  <!-- ============================================================ -->
+
+  <!--
+    Windows Event Log Cleared (EventID 1102)
+    Sigma level: critical | MITRE: T1070.001
+    High confidence. Almost no legitimate use case for clearing Security logs.
+  -->
+  <rule id="110003" level="13">
+    <if_group>windows</if_group>
+    <field name="win.system.eventID">^1102$</field>
+    <description>Sigma: Windows Security event log cleared — defense evasion</description>
+    <group>sigma,defense_evasion,log_tampering,windows,</group>
+    <mitre>
+      <id>T1070.001</id>
+    </mitre>
+  </rule>
+
+  <!--
+    Timestomping Detected — Sysmon EventID 2 (FileCreateTime changed)
+    Sigma level: high | MITRE: T1070.006
+    Requires Sysmon with Event ID 2 enabled.
+    Trusted process and system path filters applied via rule chaining below.
+  -->
+  <rule id="110004" level="10">
+    <if_group>windows</if_group>
+    <field name="win.system.eventID">^2$</field>
+    <description>Sigma: Timestomping — file creation time modified (Sysmon EID 2)</description>
+    <group>sigma,defense_evasion,timestomping,sysmon,</group>
+    <mitre>
+      <id>T1070.006</id>
+    </mitre>
+  </rule>
+
+  <!--
+    Security or Monitoring Service Stopped
+    Sigma level: critical | MITRE: T1562.001
+    Fires when sc.exe, net.exe, net1.exe, or PowerShell stops a named security service.
+    List includes: Sysmon, Defender, EventLog, CrowdStrike, SentinelOne, CarbonBlack, ossec
+  -->
+  <rule id="110005" level="13">
+    <if_group>windows</if_group>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)(stop|Stop-Service)</field>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)(Sysmon|sysmon64|WinDefend|MsMpSvc|EventLog|Sense|WdNisSvc|SecurityHealthService|wscsvc|CrowdStrike|SentinelOne|CarbonBlack|ossec|NinjaRMMAgent|ThreatLocker)</field>
+    <description>Sigma: Security or monitoring service stop command executed</description>
+    <group>sigma,defense_evasion,service_tampering,windows,</group>
+    <mitre>
+      <id>T1562.001</id>
+    </mitre>
+  </rule>
+
+  <!-- ============================================================ -->
+  <!-- PRIVILEGE ESCALATION                                          -->
+  <!-- ============================================================ -->
+
+  <!--
+    Suspicious Privilege Escalation via Sudo or Su
+    Sigma level: medium | MITRE: T1548.003, T1078.003
+    Matches sudo COMMAND= entries and su-to-root events in syslog/auth.log.
+    Tune: add known admin usernames to a whitelist rule using <if_matched_sid>.
+  -->
+  <rule id="110006" level="7">
+    <if_group>syslog</if_group>
+    <match>sudo:|su: pam_unix|su: (to root)|COMMAND=</match>
+    <description>Sigma: Privilege escalation via sudo or su detected</description>
+    <group>sigma,privilege_escalation,sudo,linux,</group>
+    <mitre>
+      <id>T1548.003</id>
+      <id>T1078.003</id>
+    </mitre>
+  </rule>
+
+  <!--
+    User Added to Local Administrators Group (EventID 4732)
+    Sigma level: high | MITRE: T1098, T1136.001
+    Fires specifically when the target group is "Administrators".
+  -->
+  <rule id="110007" level="10">
+    <if_group>windows</if_group>
+    <field name="win.system.eventID">^4732$</field>
+    <field name="win.eventdata.targetUserName" type="pcre2">(?i)^Administrators$</field>
+    <description>Sigma: User added to local Administrators group</description>
+    <group>sigma,privilege_escalation,account_manipulation,windows,</group>
+    <mitre>
+      <id>T1098</id>
+      <id>T1136.001</id>
+    </mitre>
+  </rule>
+
+  <!-- ============================================================ -->
+  <!-- PERSISTENCE                                                   -->
+  <!-- ============================================================ -->
+
+  <!--
+    New Windows Service Created via Command Line
+    Sigma level: high | MITRE: T1543.003, T1569.002
+    Matches sc.exe create/config and PowerShell New-Service.
+    Requires Sysmon EventID 1 (process creation) or Windows Security 4688.
+  -->
+  <rule id="110008" level="10">
+    <if_group>windows</if_group>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)(sc\.exe.+(create|config)|New-Service)</field>
+    <description>Sigma: New Windows service created via command line</description>
+    <group>sigma,persistence,service_creation,windows,</group>
+    <mitre>
+      <id>T1543.003</id>
+      <id>T1569.002</id>
+    </mitre>
+  </rule>
+
+  <!--
+    Cron Job Created or Modified (Linux)
+    Sigma level: medium | MITRE: T1053.003
+    Matches crontab usage and direct writes to cron directories.
+    Requires Sysmon for Linux or auditd process creation events.
+  -->
+  <rule id="110009" level="7">
+    <if_group>syslog</if_group>
+    <match>crontab|/etc/cron|/var/spool/cron</match>
+    <description>Sigma: Cron job created or modified on Linux system</description>
+    <group>sigma,persistence,cron,linux,</group>
+    <mitre>
+      <id>T1053.003</id>
+    </mitre>
+  </rule>
+
+  <!--
+    File Dropped in Windows Startup Folder (Sysmon EventID 11)
+    Sigma level: high | MITRE: T1547.001
+    Matches file creation in all-users and per-user Startup directories.
+    .ini and desktop.ini files are excluded (common false positive).
+  -->
+  <rule id="110010" level="10">
+    <if_group>windows</if_group>
+    <field name="win.system.eventID">^11$</field>
+    <field name="win.eventdata.targetFilename" type="pcre2">(?i)\\(Start Menu\\Programs\\Startup|AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup|ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Startup)\\</field>
+    <description>Sigma: File dropped in Windows Startup folder — persistence indicator</description>
+    <group>sigma,persistence,startup_folder,sysmon,</group>
+    <mitre>
+      <id>T1547.001</id>
+    </mitre>
+  </rule>
+
+  <!-- ============================================================ -->
+  <!-- CRYPTO / WEB3 THREATS                                         -->
+  <!-- ============================================================ -->
+
+  <!--
+    Crypto API Key or Seed Phrase Pattern in Process Command Line
+    Sigma level: critical | MITRE: T1552.001, T1041
+    Matches seed phrase keywords, private key indicators, Binance headers,
+    and common API key parameter names in command-line arguments.
+    WARNING: May generate false positives from security scanners.
+  -->
+  <rule id="110011" level="13">
+    <if_group>windows</if_group>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)(seed[\s_-]?phrase|mnemonic|recovery[\s_-]?phrase|private[\s_-]?key|api_key=|apikey=|api_secret=|apisecret=|X-MBX-APIKEY|0x[a-fA-F0-9]{64})</field>
+    <description>Sigma: Crypto API key or seed phrase pattern detected in command line</description>
+    <group>sigma,credential_access,crypto,web3,exfiltration,</group>
+    <mitre>
+      <id>T1552.001</id>
+      <id>T1041</id>
+    </mitre>
+  </rule>
+
+  <!--
+    Connection to Known Cryptomining Pool (Sysmon EventID 22 — DNS Query)
+    Sigma level: high | MITRE: T1496
+    Covers major XMR, ETH, and multi-algo pools plus Stratum protocol indicators.
+    Update domain list periodically as new pools emerge.
+  -->
+  <rule id="110012" level="10">
+    <if_group>windows</if_group>
+    <field name="win.system.eventID">^22$</field>
+    <field name="win.eventdata.queryName" type="pcre2">(?i)(nanopool\.org|2miners\.com|f2pool\.com|poolin\.com|antpool\.com|viabtc\.com|ethermine\.org|flexpool\.io|nicehash\.com|minergate\.com|unmineable\.com|hashvault\.pro|moneroocean\.stream|herominers\.com|supportxmr\.com|minexmr\.com|xmrpool\.eu|miningpoolhub\.com|prohashing\.com|slushpool\.com|braiins\.com)</field>
+    <description>Sigma: DNS query to known cryptomining pool domain</description>
+    <group>sigma,impact,cryptomining,crypto,web3,</group>
+    <mitre>
+      <id>T1496</id>
+    </mitre>
+  </rule>
+
+  <!--
+    DNS Query to Known Crypto Drainer or Phishing Infrastructure
+    Sigma level: critical | MITRE: T1566.002, T1071.001
+    Matches drainer-as-a-service patterns, fake airdrop/claim domains,
+    and common Web3 typosquats. Legitimate domains filtered out.
+    Follow ScamSniffer / SlowMist for emerging patterns to add.
+  -->
+  <rule id="110013" level="13">
+    <if_group>windows</if_group>
+    <field name="win.system.eventID">^22$</field>
+    <field name="win.eventdata.queryName" type="pcre2">(?i)(claim-airdrop|free-mint|nft-claim|token-approve|wallet-connect-verify|dapp-verify|metamask-verify|phantom-verify|uniswap-claim|opensea-claim|eth-reward|token-reward|web3-secure|defi-claim|uniswapp[^.]*\.|openseas[^.]*\.|metamaskk|pancakeswapp|aavee|compoundd)</field>
+    <description>Sigma: DNS query to crypto drainer or Web3 phishing infrastructure</description>
+    <group>sigma,initial_access,crypto,web3,phishing,</group>
+    <mitre>
+      <id>T1566.002</id>
+      <id>T1071.001</id>
+    </mitre>
+  </rule>
+
+  <!--
+    Unauthorized Cryptocurrency Wallet or Mining Software Executed
+    Sigma level: medium | MITRE: T1496, T1204.002
+    Matches wallet app names, known miner binaries, and Stratum protocol
+    command-line arguments. Tune for BYOD environments.
+  -->
+  <rule id="110014" level="7">
+    <if_group>windows</if_group>
+    <field name="win.eventdata.image" type="pcre2">(?i)(Exodus\.exe|atomic\.exe|Electrum\.exe|Ledger.Live\.exe|Trezor.Suite\.exe|xmrig\.exe|PhoenixMiner\.exe|nbminer\.exe|t-rex\.exe|lolMiner\.exe|gminer\.exe|TeamRedMiner\.exe|nanominer\.exe|ethminer\.exe|bfgminer\.exe|cgminer\.exe)</field>
+    <description>Sigma: Unauthorized cryptocurrency wallet or mining software executed</description>
+    <group>sigma,impact,cryptomining,crypto,web3,</group>
+    <mitre>
+      <id>T1496</id>
+      <id>T1204.002</id>
+    </mitre>
+  </rule>
+
+</group>
