@@ -44,6 +44,10 @@ sigma convert -t microsoft365defender rules/
 
 See [docs/SIEM_CONVERSION.md](docs/SIEM_CONVERSION.md) for full conversion instructions including Wazuh, bulk export, and pipeline configuration.
 
+### Already on Wazuh?
+
+Skip the conversion step. A ready-to-deploy Wazuh 4.x XML version of all 14 rules is pre-built in [`conversions/wazuh/sigma_converted.xml`](conversions/wazuh/sigma_converted.xml). Copy it to `/var/ossec/etc/rules/` on your manager, restart `wazuh-manager`, and you're done.
+
 ## Repo Structure
 
 ```
@@ -68,6 +72,9 @@ sigma-detection-rules/
 │       ├── api_key_seed_phrase_exposure.yml
 │       ├── unauthorized_wallet_miner_execution.yml
 │       └── crypto_drainer_dns_query.yml
+├── conversions/
+│   └── wazuh/
+│       └── sigma_converted.xml
 └── docs/
     ├── THREAT_MODEL.md
     ├── MITRE_COVERAGE.md
