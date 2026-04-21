@@ -46,7 +46,7 @@ See [docs/SIEM_CONVERSION.md](docs/SIEM_CONVERSION.md) for full conversion instr
 
 ### Already on Wazuh?
 
-Skip the conversion step. A ready-to-deploy Wazuh 4.x XML version of all 14 rules is pre-built in [`conversions/wazuh/sigma_converted.xml`](conversions/wazuh/sigma_converted.xml). Copy it to `/var/ossec/etc/rules/` on your manager, restart `wazuh-manager`, and you're done.
+Skip the conversion step. A ready-to-deploy Wazuh 4.x XML version of all 14 rules is pre-built in [`conversions/wazuh/sigma_converted.xml`](conversions/wazuh/sigma_converted.xml). Copy it to /var/ossec/etc/rules/ on your manager and restart wazuh-manager. Rules will start firing immediately. See the tuning notes in the XML header for environment-specific adjustments (whitelisting internal IPs, admin accounts, etc.).
 
 ## Repo Structure
 
