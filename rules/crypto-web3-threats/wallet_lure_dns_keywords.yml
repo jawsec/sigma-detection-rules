@@ -1,0 +1,29 @@
+title: Wallet-Themed Lure Keywords in DNS Query
+id: bdf72487-4984-453b-a7ce-1759b408f512
+related:
+    - id: 7a3f2e01-d4c8-4b91-a1f3-5e8c9d2b4a14
+      type: obsolete
+status: experimental
+description: |
+    Detects selected wallet verification keywords in DNS names as a hunting heuristic.
+    These are lexical patterns, not verified malicious indicators. A query does not
+    establish phishing delivery, a user click, C2, a wallet drainer, or transaction signing.
+references:
+    - https://support.metamask.io/stay-safe/safety-in-web3/
+author: jawsec
+date: 2026-09-17
+tags:
+    - detection.threat-hunting
+logsource:
+    category: dns_query
+    product: windows
+detection:
+    selection:
+        QueryName|contains:
+            - wallet-connect-verify
+            - metamask-verify
+            - phantom-verify
+    condition: selection
+falsepositives:
+    - Research systems, legitimate educational domains, browser prefetch, and unrelated substring matches
+level: low

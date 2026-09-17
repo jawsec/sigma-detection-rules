@@ -1,0 +1,36 @@
+name: Kino splunk Linux ingestion contract
+priority: 30
+transformations:
+    - id: source_sshd
+      type: add_condition
+      conditions:
+          sourcetype: syslog
+          process: sshd
+      rule_conditions:
+          - type: logsource
+            product: linux
+            service: sshd
+    - id: source_sudo
+      type: add_condition
+      conditions:
+          sourcetype: syslog
+          process: sudo
+      rule_conditions:
+          - type: logsource
+            product: linux
+            service: sudo
+    - id: source_auditd
+      type: add_condition
+      conditions:
+          sourcetype: auditd
+      rule_conditions:
+          - type: logsource
+            product: linux
+            service: auditd
+    - id: message_mapping
+      type: field_name_mapping
+      mapping:
+          message: _raw
+      rule_conditions:
+          - type: logsource
+            product: linux

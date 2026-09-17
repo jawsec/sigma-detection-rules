@@ -1,18 +1,16 @@
-title: File Dropped in Windows Startup Folder
-id: 7a3f2e01-d4c8-4b91-a1f3-5e8c9d2b4a04
+title: File Created in Windows Startup Folder
+id: 04ed2bf8-a283-4959-86bf-42622eceb94d
 status: experimental
 description: |
-    Detects file creation events in Windows startup folders (both per-user and all-users).
-    Any executable, script, or shortcut placed in these directories will run automatically
-    at user logon. This is a low-sophistication but highly effective persistence technique
-    used by commodity malware, ransomware droppers, and even some APT groups as a
-    quick-and-dirty foothold. Legitimate software rarely drops files here — most use
-    registry Run keys or scheduled tasks instead.
+    Detects creation of a file under a conventional Windows Startup folder path.
+    A path match does not establish execution or resolve redirected known folders.
+    Only desktop.ini is excluded; other file extensions remain visible.
 references:
-    - https://attack.mitre.org/techniques/T1547/001/
+    - https://learn.microsoft.com/en-us/windows/win32/shell/knownfolderid
+    - https://learn.microsoft.com/en-us/sysinternals/downloads/sysmon
 author: jawsec
-date: 2026/04/01
-modified: 2026/04/01
+date: 2026-04-01
+modified: 2026-09-17
 tags:
     - attack.persistence
     - attack.t1547.001
@@ -21,27 +19,10 @@ logsource:
     product: windows
 detection:
     selection:
-        TargetFilename|contains:
-            - '\Start Menu\Programs\Startup\'
-            - '\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup\'
-            - '\ProgramData\Microsoft\Windows\Start Menu\Programs\Startup\'
-    filter_extensions:
-        TargetFilename|endswith:
-            - '.ini'
-            - '.desktop.ini'
-    condition: selection and not filter_extensions
+        TargetFilename|contains: '\Microsoft\Windows\Start Menu\Programs\Startup\'
+    filter_main_metadata:
+        TargetFilename|endswith: '\desktop.ini'
+    condition: selection and not filter_main_metadata
 falsepositives:
-    - Legitimate applications that add themselves to startup during installation
-    - IT administrators deploying logon scripts via startup folder (uncommon but possible)
-    - OneDrive or cloud sync restoring previously synced startup items
-level: high
-# ---
-# TESTING METHODOLOGY
-# To trigger this rule in a lab environment:
-#   1. Ensure Sysmon is installed with file creation events enabled (Event ID 11)
-#   2. Open PowerShell and run:
-#      New-Item -Path "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Startup\test_persistence.bat" -Value "echo test"
-#   3. Verify Sysmon Event ID 11 captures the file creation
-#   4. Confirm your SIEM fires the alert
-#   5. Clean up: Remove-Item "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Startup\test_persistence.bat"
-# Expected result: Alert fires on any file creation in the Startup directory
+    - Approved installers, logon scripts, and restored startup items
+level: medium

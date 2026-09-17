@@ -1,44 +1,27 @@
-title: User Added to Local Administrators Group
-id: 7a3f2e01-d4c8-4b91-a1f3-5e8c9d2b4a07
+title: Member Added to Local Administrators Group
+id: 59618ca7-1597-4cd0-93a3-aab14b7f3729
 status: experimental
 description: |
-    Detects when a user account is added to the local Administrators group on a Windows
-    system. This is a critical privilege escalation indicator — adversaries who have gained
-    initial access with a standard user account will frequently add themselves or a newly
-    created account to the Administrators group to obtain full system control. Outside of
-    onboarding or known IT operations, this event should be rare and always investigated.
+    Detects a member added to the built-in Administrators group using its language-independent SID.
+    The member can be a user, group, or computer. This event does not establish account creation
+    or bypass of an authorization boundary.
 references:
-    - https://attack.mitre.org/techniques/T1098/
-    - https://attack.mitre.org/techniques/T1136/001/
+    - https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-10/security/threat-protection/auditing/event-4732
 author: jawsec
-date: 2026/04/01
-modified: 2026/04/01
+date: 2026-04-01
+modified: 2026-09-17
 tags:
-    - attack.privilege_escalation
-    - attack.t1098
     - attack.persistence
-    - attack.t1136.001
+    - attack.privilege-escalation
+    - attack.t1098.007
 logsource:
     product: windows
     service: security
 detection:
-    selection_event:
-        EventID: 4732  # Member added to security-enabled local group
-    selection_admin_group:
-        TargetUserName: 'Administrators'
-    condition: selection_event and selection_admin_group
+    selection:
+        EventID: 4732
+        TargetSid: S-1-5-32-544
+    condition: selection
 falsepositives:
-    - IT administrators onboarding new employees who require local admin rights
-    - Software deployment tools (SCCM, Intune) temporarily elevating accounts
-    - Domain join operations that add domain admins to local admin groups
-    - Help desk technicians adding themselves for troubleshooting (should still be reviewed)
-level: high
-# ---
-# TESTING METHODOLOGY
-# To trigger this rule in a lab environment:
-#   1. Create a test user: net user testuser P@ssw0rd123 /add
-#   2. Add to admins: net localgroup Administrators testuser /add
-#   3. Verify Event ID 4732 appears in Event Viewer > Security log
-#   4. Confirm your SIEM fires the alert
-#   5. Clean up: net localgroup Administrators testuser /delete && net user testuser /delete
-# Expected result: Alert fires immediately when the user is added to Administrators
+    - Approved onboarding, endpoint management, and temporary administrative access
+level: medium

@@ -1,0 +1,15 @@
+extends: default
+ignore: |
+    .git/
+    .venv/
+    .build/
+rules:
+    document-start: disable
+    line-length:
+        max: 140
+        allow-non-breakable-words: true
+    indentation:
+        spaces: consistent
+        indent-sequences: true
+    truthy:
+        allowed-values: ['true', 'false']

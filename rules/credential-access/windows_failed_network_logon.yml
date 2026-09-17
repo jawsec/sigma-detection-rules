@@ -1,0 +1,35 @@
+title: Windows Failed Network Logon
+id: 6e9a7766-0638-4e31-a983-88418afa921d
+related:
+    - id: 58847aa6-96d4-4a87-a61d-085125c92d00
+      type: derived
+status: experimental
+description: |
+    Detects a Windows failed network logon with a populated remote IP address.
+    This is an informational building block, not a brute-force alert. Machine accounts
+    are included. Use the separate correlation for repeated failures.
+references:
+    - https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-10/security/threat-protection/auditing/event-4625
+author: jawsec
+date: 2026-09-17
+tags:
+    - detection.threat-hunting
+logsource:
+    product: windows
+    service: security
+detection:
+    selection:
+        EventID: 4625
+        LogonType: 3
+        IpAddress|exists: true
+    filter_main_local:
+        IpAddress:
+            - '-'
+            - ''
+            - 127.0.0.1
+            - ::1
+    condition: selection and not filter_main_local
+falsepositives:
+    - Mistyped passwords, stale service credentials, and authenticated vulnerability scans
+level: informational
+name: windows_failed_network_logon

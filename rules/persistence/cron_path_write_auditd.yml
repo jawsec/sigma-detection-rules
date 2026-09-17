@@ -1,0 +1,30 @@
+title: Successful Write or Attribute Operation on Watched Cron Path
+id: bb93d416-1398-404f-9529-4445f67d5252
+related:
+    - id: 7a3f2e01-d4c8-4b91-a1f3-5e8c9d2b4a05
+      type: obsolete
+status: experimental
+description: |
+    Detects successful auditd syscalls selected by the kino_cron watch key.
+    Configure write and attribute auditing on cron paths as documented in RULE_GUIDE.md.
+    A successful watched syscall does not prove a runnable cron job was installed.
+references:
+    - https://man7.org/linux/man-pages/man8/auditctl.8.html
+author: jawsec
+date: 2026-09-17
+tags:
+    - attack.persistence
+    - attack.execution
+    - attack.t1053.003
+logsource:
+    product: linux
+    service: auditd
+detection:
+    selection:
+        type: SYSCALL
+        key: kino_cron
+        success: 'yes'
+    condition: selection
+falsepositives:
+    - Package updates, configuration management, and approved cron administration
+level: low

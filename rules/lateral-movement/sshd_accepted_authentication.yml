@@ -1,0 +1,31 @@
+title: OpenSSH Accepted Authentication
+id: 5c3d4bc7-6aaa-432f-9533-a64f022361c7
+related:
+    - id: 7a3f2e01-d4c8-4b91-a1f3-5e8c9d2b4a02
+      type: obsolete
+status: experimental
+description: |
+    Detects accepted password, public-key, or keyboard-interactive authentication in OpenSSH logs.
+    This is a hunting baseline; it does not identify external, unusual, or malicious sources.
+    The message field must contain the unmodified sshd message body.
+references:
+    - https://man.openbsd.org/sshd
+author: jawsec
+date: 2026-09-17
+tags:
+    - attack.lateral-movement
+    - attack.t1021.004
+    - detection.threat-hunting
+logsource:
+    product: linux
+    service: sshd
+detection:
+    selection:
+        message|contains:
+            - 'Accepted password for '
+            - 'Accepted publickey for '
+            - 'Accepted keyboard-interactive/pam for '
+    condition: selection
+falsepositives:
+    - Routine administration, deployment automation, and bastion access
+level: informational

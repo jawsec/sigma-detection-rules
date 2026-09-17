@@ -1,0 +1,28 @@
+title: File Creation Time Changed
+id: 6d762506-d297-4617-9033-719f3440f37d
+related:
+    - id: 7a3f2e01-d4c8-4b91-a1f3-5e8c9d2b4a10
+      type: obsolete
+status: experimental
+description: |
+    Detects a file creation-time change recorded by Sysmon event 2 through the file_change category.
+    This is a hunting baseline; it does not compare timestamps or prove timestomping.
+    It does not cover all NTFS timestamps or direct filesystem manipulation.
+references:
+    - https://learn.microsoft.com/en-us/sysinternals/downloads/sysmon
+author: jawsec
+date: 2026-09-17
+tags:
+    - attack.stealth
+    - attack.t1070.006
+    - detection.threat-hunting
+logsource:
+    category: file_change
+    product: windows
+detection:
+    selection:
+        Image|exists: true
+    condition: selection
+falsepositives:
+    - Installers, archive extraction, browser updates, synchronization, and backup restoration
+level: low
