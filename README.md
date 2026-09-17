@@ -1,120 +1,93 @@
 # sigma-detection-rules
 
-SIEM-agnostic detection rules written in Sigma. 14 rules covering 8 MITRE ATT&CK tactics, organized by attack phase, with a dedicated Crypto/Web3 Threats category you won't find in other public rule packs.
+Experimental Sigma content for mixed Windows/Linux environments, maintained by
+[jawsec](https://github.com/jawsec) / Kino Security LLC.
 
-Built for home users, small businesses, and lean security teams who need real detection coverage without a dedicated detection engineering department.
+The repository contains **14 single-event selectors and one correlation**. The
+failed-logon selector is the correlation's input, not an additional brute-force
+detection. Several rules are intentionally low/informational hunting signals.
+All rules remain `experimental`: automated parsing and query generation do not
+establish detection efficacy, acceptable noise, or production readiness.
 
-## What's In Here
+## Scope and telemetry
 
-**Initial Access** — Brute force authentication, SSH login from unusual external sources
+| Source | Requirement | Content |
+|---|---|---|
+| Windows Security | Collect 4625, 4732, 1102; enable failed Logon and successful Security Group Management auditing | Failed network logons, Administrators membership, Security log clearing |
+| Windows Sysmon | Explicitly collect events 1, 2, 11, 22 with required fields; review filters | Process commands, Startup writes, creation-time changes, DNS |
+| Linux sshd/sudo | Forward original message body and program identity | Accepted SSH authentication and sudo commands targeting root; hunting baselines |
+| Linux auditd | Install documented `kino_cron` write/attribute watches and parse SYSCALL records | Operations on cron paths |
 
-**Persistence** — New Windows service creation, startup folder file drops, cron job modifications
+See the [per-rule guide](docs/RULE_GUIDE.md) for false positives, tuning, blind
+spots, and unexecuted lab checks. A default Sysmon installation or generic
+process log feed is insufficient for the whole pack.
 
-**Privilege Escalation** — Suspicious sudo/su usage, user added to local Administrators group
+## Quick start
 
-**Defense Evasion** — Event log clearing, security service tampering, timestomping
-
-**Crypto/Web3 Threats** — Mining pool connections, API key and seed phrase exposure in process command lines, unauthorized wallet and miner execution, wallet drainer phishing DNS detection
-
-Every rule includes MITRE ATT&CK mapping, false positive documentation, severity reasoning, and a step-by-step lab testing methodology so you can validate it before deploying.
-
-## Quick Start
-
-These are Sigma rules (YAML). They work with any SIEM that supports Sigma conversion.
+Python 3.12 is the tested interpreter. Run from the repository root:
 
 ```bash
 git clone https://github.com/jawsec/sigma-detection-rules.git
 cd sigma-detection-rules
-
-# Install sigma-cli
-pip install sigma-cli
-
-# Convert to Splunk
-sigma plugin install splunk
-sigma convert -t splunk rules/
-
-# Convert to Elastic
-sigma plugin install elasticsearch
-sigma convert -t elasticsearch rules/
-
-# Convert to Microsoft Sentinel
-sigma plugin install microsoft365defender
-sigma convert -t microsoft365defender rules/
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install -r requirements-dev.txt
+yamllint -s .
+python scripts/check.py
+sigma check -x d3_fendtag --fail-on-issues .build/validation/
+python scripts/coverage.py --check
+python scripts/convert.py splunk
+python scripts/convert.py lucene
+python scripts/convert.py kusto
+sigma convert -t splunk -p splunk_windows .build/correlation/ > .build/correlation.spl
+python -m unittest discover -s tests -v
 ```
 
-See [docs/SIEM_CONVERSION.md](docs/SIEM_CONVERSION.md) for full conversion instructions including Wazuh, bulk export, and pipeline configuration.
+The conversion script selects source-specific pipelines and prints the actual
+commands and generated queries. Outputs are under `.build/`. Read the
+[conversion contracts](docs/SIEM_CONVERSION.md) before using them. These are query
+strings, not deployed alerts. Splunk, Elasticsearch Lucene, and Sentinel KQL
+single-event conversion are supported by this workflow; correlation export is
+currently Splunk-only. SIEM execution and real-event replay remain unverified.
 
-### Already on Wazuh?
+## Repository map
 
-Skip the conversion step. A ready-to-deploy Wazuh 4.x XML version of all 14 rules is pre-built in [`conversions/wazuh/sigma_converted.xml`](conversions/wazuh/sigma_converted.xml). Copy it to /var/ossec/etc/rules/ on your manager and restart wazuh-manager. Rules will start firing immediately. See the tuning notes in the XML header for environment-specific adjustments (whitelisting internal IPs, admin accounts, etc.).
+- `rules/`: single-event Sigma selectors, organized by tactic or subject.
+- `correlations/`: repeated failed network logons, grouped by source and host.
+- `pipelines/`: explicit local ingestion contracts for Linux, ECS IP fields, and Sentinel.
+- `scripts/`: checks, conversions, and generated ATT&CK inventory.
+- `tests/`: conversion regression checks and a real-capture TODO manifest.
+- `conversions/wazuh/`: **four experimental XML examples**, not a complete port.
+- `docs/`: threat model, tuning, indicator provenance, conversion guide, and mappings.
 
-## Repo Structure
+[ATT&CK mappings](docs/MITRE_COVERAGE.md) are generated from rule tags and checked
+for drift in CI. Crypto/Web3 is a subject folder, not an ATT&CK tactic. Tag counts
+do not measure operational coverage. The reference snapshot is Enterprise
+ATT&CK 19.2; it uses Stealth and Defense Impairment and excludes revoked techniques.
 
-```
-sigma-detection-rules/
-├── rules/
-│   ├── initial-access/
-│   │   ├── brute_force_authentication.yml
-│   │   └── ssh_login_unusual_source.yml
-│   ├── persistence/
-│   │   ├── new_windows_service_created.yml
-│   │   ├── startup_folder_file_drop.yml
-│   │   └── cron_job_created_modified.yml
-│   ├── privilege-escalation/
-│   │   ├── suspicious_sudo_su_usage.yml
-│   │   └── user_added_local_admins.yml
-│   ├── defense-evasion/
-│   │   ├── event_log_cleared.yml
-│   │   ├── security_service_stopped.yml
-│   │   └── timestomping_detected.yml
-│   └── crypto-web3-threats/
-│       ├── cryptomining_pool_connection.yml
-│       ├── api_key_seed_phrase_exposure.yml
-│       ├── unauthorized_wallet_miner_execution.yml
-│       └── crypto_drainer_dns_query.yml
-├── conversions/
-│   └── wazuh/
-│       └── sigma_converted.xml
-└── docs/
-    ├── THREAT_MODEL.md
-    ├── MITRE_COVERAGE.md
-    └── SIEM_CONVERSION.md
-```
+## Crypto/Web3 content
 
-## MITRE ATT&CK Coverage
+Selected mining pool lookups and miner process indicators overlap with existing
+[SigmaHQ mining detections](https://github.com/SigmaHQ/sigma/blob/2e8fd89f82d9104c1b30321a307254ddeea17de2/rules/network/dns/net_dns_pua_cryptocoin_mining_xmr.yml).
+This project offers a small reviewable set, not unique threat coverage.
+Wallet-lure DNS keywords are unverified lexical heuristics. The curl header rule
+is a potential secret-handling issue, not a seed-phrase or theft detector.
+[Indicator maintenance](docs/INDICATORS.md) records the list's limits and review dates.
 
-| Tactic | Rules | Key Techniques |
-|--------|-------|----------------|
-| Initial Access | 2 | T1110 (Brute Force), T1078 (Valid Accounts) |
-| Persistence | 3 | T1543.003 (Windows Service), T1547.001 (Startup), T1053.003 (Cron) |
-| Privilege Escalation | 2 | T1548.003 (Sudo/Su), T1098 (Account Manipulation) |
-| Defense Evasion | 3 | T1070.001 (Log Clearing), T1562.001 (Disable Tools), T1070.006 (Timestomp) |
-| Crypto/Web3 | 4 | T1496 (Cryptojacking), T1552.001 (Credential Exposure), T1566.002 (Phishing) |
+## Wazuh and validation
 
-Full coverage matrix with gap analysis: [docs/MITRE_COVERAGE.md](docs/MITRE_COVERAGE.md)
+Wazuh does not compile these Sigma YAML files. The
+[hand-maintained XML subset](conversions/wazuh/README.md) requires local decoder,
+ruleset, and `wazuh-logtest` testing. No immediate-alerting claim is made.
 
-## Why a Crypto/Web3 Category
+CI checks YAML, Sigma parsing/validators, UUIDs, ATT&CK relationships, generated
+document freshness, query conversion, and XML well-formedness. No real telemetry
+captures are committed yet. See [tests/README.md](tests/README.md).
 
-Most public detection rule repositories don't cover cryptocurrency-specific threats at all. This pack includes four rules targeting the crypto threat landscape because cryptojacking, wallet drainers, and credential theft are real and growing attack vectors that standard detection packs ignore. If you hold crypto, work in Web3, or manage systems where users interact with blockchain services, these rules fill a gap nothing else covers.
+The separate [vigil project](https://github.com/jawsec/vigil) may be relevant to
+other monitoring tasks; this repository makes no combined kill-chain coverage claim.
 
-Read the full reasoning: [docs/THREAT_MODEL.md](docs/THREAT_MODEL.md)
+## Contributing and license
 
-## Companion Project
-
-This rule pack covers threats visible in SIEM logs. For threats that don't show up in Sysmon — blockchain transaction monitoring, file integrity checking, and network threat feeds — see [vigil](https://github.com/jawsec/vigil).
-
-Together they cover the full kill chain: Sigma catches the attack, vigil catches the impact.
-
-## Requirements
-
-- [sigma-cli](https://github.com/SigmaHQ/sigma-cli) for SIEM conversion
-- Sysmon on Windows endpoints (recommended: [SwiftOnSecurity config](https://github.com/SwiftOnSecurity/sysmon-config) as a starting point)
-- A SIEM that ingests the relevant log sources (Wazuh, Splunk, Elastic, Sentinel, etc.)
-
-## License
-
-MIT — see [LICENSE](LICENSE).
-
----
-
-Built by [jawsec](https://github.com/jawsec) | Kino Security LLC
+See [CONTRIBUTING.md](CONTRIBUTING.md) and [CHANGELOG.md](CHANGELOG.md).
+MIT; see [LICENSE](LICENSE).

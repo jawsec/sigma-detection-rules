@@ -1,0 +1,11 @@
+name: Preserve raw Windows Security IP sentinels
+priority: 25
+transformations:
+    - id: raw_security_ip
+      type: field_name_mapping
+      mapping:
+          source.ip: winlog.event_data.IpAddress
+      rule_conditions:
+          - type: logsource
+            product: windows
+            service: security

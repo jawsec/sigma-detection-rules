@@ -1,0 +1,27 @@
+title: Repeated Windows Network Logon Failures From One Source
+id: 58847aa6-96d4-4a87-a61d-085125c92d00
+status: experimental
+description: |
+    Counts at least 10 failed network logons per source IP and destination computer in five minutes.
+    Possible brute force; does not distinguish password spraying from guessing or establish success.
+references:
+    - https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-10/security/threat-protection/auditing/event-4625
+author: jawsec
+date: 2026-04-01
+modified: 2026-09-17
+tags:
+    - attack.credential-access
+    - attack.t1110
+correlation:
+    type: event_count
+    rules:
+        - windows_failed_network_logon
+    group-by:
+        - Computer
+        - IpAddress
+    timespan: 5m
+    condition:
+        gte: 10
+falsepositives:
+    - Stale service credentials, shared NAT addresses, and authenticated scanners
+level: medium

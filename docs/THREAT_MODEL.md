@@ -1,37 +1,63 @@
-# Threat Model
+# Threat model
 
-## Target Environment
+## Environment and assets
 
-This rule pack is designed for home users, small businesses, and security teams who need practical detection coverage without the overhead of a commercial detection engineering team. The rules assume:
+Scope: managed Windows endpoints with Security and Sysmon logs, and Linux hosts
+with sshd/sudo syslog and configured auditd cron watches. Assets of interest are
+administrative access, persistence locations, endpoint telemetry integrity,
+compute resources, and secrets that could be recorded in process logs.
 
-- A mixed Windows and Linux environment (most rules target Windows with Sysmon, some target Linux syslog)
-- Sysmon is installed on Windows endpoints with a reasonable configuration (process creation, file events, DNS queries, and file creation time changes enabled)
-- A SIEM is ingesting logs (Wazuh, Splunk, Elastic, Microsoft Sentinel, or similar)
-- No dedicated SOC staff — alerts need to be high-confidence with low false positive rates to be actionable by a single admin or small team
+This is a small experimental set for an administrator or security team able to
+review and tune its signals. It does not assume that every selector is suitable
+for unattended high-severity alerting. No measured precision, recall, noise
+rate, or pre-loss prevention claim is available.
 
-## Why These Detections
+## Observable behaviors
 
-The 14 rules in this pack were chosen based on three criteria:
+| Concern | Observation | What remains unproven |
+|---|---|---|
+| Password attacks | Repeated network-logon failures on one Windows host | Attacker intent, password spraying versus guessing, successful compromise |
+| Access and privilege use | Accepted SSH, sudo root requests, Administrators group changes | Unusual source, stolen credentials, unauthorized elevation |
+| Persistence | Service-creation command, Startup file creation, watched cron operation | Successful service install, execution at logon, valid scheduled payload |
+| Defense impairment / stealth | Security log clear, security-service stop command, creation-time change | Malicious intent, successful service stop, comprehensive timestamp tampering |
+| Compute misuse | Selected pool DNS queries or miner indicators | Successful mining, resource consumption, authorization |
+| Crypto-related hygiene / hunting | API-header marker or wallet-lure DNS keyword | Real secret, exfiltration, user click, drainer execution, transaction signing |
 
-1. **High frequency in real-world attacks.** Every technique covered here appears consistently in public incident reports, MITRE ATT&CK's "most commonly observed" data, and commodity malware analysis. These are not theoretical attacks — they happen daily.
+Mappings use [Enterprise ATT&CK](https://attack.mitre.org/tactics/enterprise/)
+19.2 and are generated in [MITRE_COVERAGE.md](MITRE_COVERAGE.md). They describe
+possible adversary behavior, not an attribution decision. No ATT&CK tag is
+assigned to the header-marker and lure-keyword selectors because their events
+do not establish the proposed credential-theft or phishing techniques.
 
-2. **Observable from endpoint telemetry.** All rules can fire from standard log sources (Windows Security logs, Sysmon, Linux syslog). No network taps, packet captures, or expensive sensors required.
+## Trust and visibility limits
 
-3. **Actionable at small scale.** Each rule has documented false positives and tuning guidance so a solo admin can deploy them without drowning in noise. Rules with inherently high false positive rates (like generic PowerShell logging) were intentionally excluded.
+Endpoint and collector configuration determine what reaches a rule. An attacker
+may disable collection, rename tools, encode commands, use APIs, modify files
+through unmonitored mechanisms, or use private infrastructure. DNS-over-HTTPS,
+direct IP use, caching, and non-Windows clients limit this DNS coverage. Logs can
+arrive late, duplicate, truncate, or omit fields. A compromised host can also
+make its own telemetry less trustworthy.
 
-## The Crypto/Web3 Category
+[Sysmon's event descriptions](https://learn.microsoft.com/en-us/sysinternals/downloads/sysmon)
+define the sensors' scope. Event 2 observes creation-time changes, not every
+filesystem timestamp. Event 22 records DNS queries; it is not a network-flow or
+wallet-transaction sensor. Linux audit collection must be explicitly configured;
+[auditctl](https://man7.org/linux/man-pages/man8/auditctl.8.html) documents the
+watch and syscall mechanisms used here.
 
-Most public Sigma rule repositories ignore cryptocurrency-specific threats entirely. This pack includes four rules targeting the crypto threat landscape because:
+There is no behavioral baseline, reputation service, enrichment feed, or policy
+inventory in this repository. "Authorized" must be established from the owner's
+asset and change records. Source geography alone is not a compromise verdict.
 
-- Cryptojacking (unauthorized mining) is one of the most common post-compromise monetization strategies, and mining pool DNS queries are a near-zero false positive detection
-- Wallet drainer phishing is the single largest source of consumer crypto theft, and DNS-level detection catches it before funds are lost
-- API key and seed phrase exposure in command lines is a real and preventable credential theft vector
-- Unauthorized wallet or miner software on managed endpoints is a policy violation at minimum and an active compromise indicator at worst
+## Overlap and omissions
 
-These rules are useful to anyone managing systems where cryptocurrency is relevant — from personal machines with wallet software to businesses that accept or hold crypto.
+[SigmaHQ already publishes mining DNS content](https://github.com/SigmaHQ/sigma/blob/2e8fd89f82d9104c1b30321a307254ddeea17de2/rules/network/dns/net_dns_pua_cryptocoin_mining_xmr.yml).
+This pack does not claim novelty or a gap that other rule packs ignore. Pool
+operators' sites establish the selected domains' stated function, not maliciousness;
+see [INDICATORS.md](INDICATORS.md). Lure keywords are not a threat-intelligence feed.
 
-## What This Pack Does NOT Cover
-
-This is not a comprehensive detection program. 14 rules cover 8 of 14 MITRE ATT&CK tactics. Notable gaps include lateral movement, advanced C2 beaconing, in-memory-only attacks, and data collection/staging. See [MITRE_COVERAGE.md](MITRE_COVERAGE.md) for a full gap analysis.
-
-For monitoring that falls outside of SIEM log analysis — such as blockchain transaction monitoring and file integrity checking — see the companion project [vigil](https://github.com/jawsec/vigil).
+Not covered comprehensively: credential dumping, discovery, lateral movement,
+C2, collection, exfiltration, in-memory activity, cloud identity abuse, browser
+extensions, smart-contract behavior, and on-chain transfers. Endpoint logs alone
+cannot establish that a wallet was drained. No combination with another project
+is claimed to cover a full kill chain.

@@ -1,0 +1,43 @@
+title: Potential Security Service Stop Attempt
+id: ced50fae-ccab-48ad-811c-f550f61e5378
+status: experimental
+description: |
+    Detects stop commands referencing selected Windows security service names.
+    Process command lines record an attempted command, not a successful service stop.
+    Quoted or obfuscated arguments, renamed tools, and API-based stops may evade this rule.
+references:
+    - https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-server-2012-r2-and-2012/cc742107(v=ws.11)
+    - https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.management/stop-service
+author: jawsec
+date: 2026-04-01
+modified: 2026-09-17
+tags:
+    - attack.defense-impairment
+    - attack.t1685
+logsource:
+    category: process_creation
+    product: windows
+detection:
+    selection_cmd:
+        Image|endswith:
+            - '\sc.exe'
+            - '\net.exe'
+            - '\net1.exe'
+        CommandLine|contains: ' stop '
+    selection_ps:
+        Image|endswith:
+            - '\powershell.exe'
+            - '\pwsh.exe'
+        CommandLine|contains: Stop-Service
+    selection_target:
+        CommandLine|contains:
+            - Sysmon
+            - WinDefend
+            - WdNisSvc
+            - Sense
+            - EventLog
+            - WazuhSvc
+    condition: (selection_cmd or selection_ps) and selection_target
+falsepositives:
+    - Security agent upgrades, troubleshooting, and approved service maintenance; substring collisions
+level: medium

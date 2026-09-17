@@ -1,0 +1,30 @@
+title: Sudo Command Requested as Root
+id: 0043991a-74a7-4d06-b70d-910fee76339e
+related:
+    - id: 7a3f2e01-d4c8-4b91-a1f3-5e8c9d2b4a06
+      type: obsolete
+status: experimental
+description: |
+    Detects a sudo command log entry with root as the requested target user.
+    The syslog message body must preserve sudo key-value text. This is a hunting
+    baseline, not evidence of exploitation, unusual users, or successful command completion.
+references:
+    - https://www.sudo.ws/docs/man/sudoers.man/
+author: jawsec
+date: 2026-09-17
+tags:
+    - attack.privilege-escalation
+    - attack.t1548.003
+    - detection.threat-hunting
+logsource:
+    product: linux
+    service: sudo
+detection:
+    selection:
+        message|contains|all:
+            - 'USER=root ;'
+            - COMMAND=
+    condition: selection
+falsepositives:
+    - Routine administrator commands, backups, and configuration management
+level: informational

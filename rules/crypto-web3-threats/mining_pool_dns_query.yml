@@ -1,0 +1,41 @@
+title: DNS Query for Selected Mining Pool Domains
+id: 6138b628-41d0-4a14-9629-d37e4cc97a54
+status: experimental
+description: |
+    Detects apex or subdomain queries for a small maintained list of mining pool operators.
+    DNS queries do not establish a connection, mining, or unauthorized resource use.
+    The list is not exhaustive; see INDICATORS.md for provenance and review dates.
+references:
+    - https://www.supportxmr.com/
+    - https://moneroocean.stream/
+    - https://2miners.com/
+author: jawsec
+date: 2026-04-01
+modified: 2026-09-17
+tags:
+    - attack.impact
+    - attack.t1496.001
+logsource:
+    category: dns_query
+    product: windows
+detection:
+    selection_apex:
+        QueryName:
+            - supportxmr.com
+            - moneroocean.stream
+            - 2miners.com
+            - supportxmr.com.
+            - moneroocean.stream.
+            - 2miners.com.
+    selection_subdomain:
+        QueryName|endswith:
+            - .supportxmr.com
+            - .moneroocean.stream
+            - .2miners.com
+            - .supportxmr.com.
+            - .moneroocean.stream.
+            - .2miners.com.
+    condition: 1 of selection_*
+falsepositives:
+    - Authorized mining, pool website browsing, browser prefetch, and security research
+level: medium

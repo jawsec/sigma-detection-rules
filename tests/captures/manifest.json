@@ -1,0 +1,185 @@
+{
+  "evidence": "No real captures available. See docs/RULE_GUIDE.md for per-rule lab tasks.",
+  "rules": [
+    {
+      "rule_id": "6e9a7766-0638-4e31-a983-88418afa921d",
+      "rule": "rules/credential-access/windows_failed_network_logon.yml",
+      "behavior_positive": {
+        "status": "TODO_NOT_CAPTURED",
+        "path": null
+      },
+      "benign": {
+        "status": "TODO_NOT_CAPTURED",
+        "path": null
+      }
+    },
+    {
+      "rule_id": "f9598d3e-c872-4e7b-bd5b-077a89b0e577",
+      "rule": "rules/crypto-web3-threats/curl_binance_api_header.yml",
+      "behavior_positive": {
+        "status": "TODO_NOT_CAPTURED",
+        "path": null
+      },
+      "benign": {
+        "status": "TODO_NOT_CAPTURED",
+        "path": null
+      }
+    },
+    {
+      "rule_id": "e3185fc2-e990-4a0e-b494-47a631346fe7",
+      "rule": "rules/crypto-web3-threats/miner_process_execution.yml",
+      "behavior_positive": {
+        "status": "TODO_NOT_CAPTURED",
+        "path": null
+      },
+      "benign": {
+        "status": "TODO_NOT_CAPTURED",
+        "path": null
+      }
+    },
+    {
+      "rule_id": "6138b628-41d0-4a14-9629-d37e4cc97a54",
+      "rule": "rules/crypto-web3-threats/mining_pool_dns_query.yml",
+      "behavior_positive": {
+        "status": "TODO_NOT_CAPTURED",
+        "path": null
+      },
+      "benign": {
+        "status": "TODO_NOT_CAPTURED",
+        "path": null
+      }
+    },
+    {
+      "rule_id": "bdf72487-4984-453b-a7ce-1759b408f512",
+      "rule": "rules/crypto-web3-threats/wallet_lure_dns_keywords.yml",
+      "behavior_positive": {
+        "status": "TODO_NOT_CAPTURED",
+        "path": null
+      },
+      "benign": {
+        "status": "TODO_NOT_CAPTURED",
+        "path": null
+      }
+    },
+    {
+      "rule_id": "ced50fae-ccab-48ad-811c-f550f61e5378",
+      "rule": "rules/defense-impairment/security_service_stop_command.yml",
+      "behavior_positive": {
+        "status": "TODO_NOT_CAPTURED",
+        "path": null
+      },
+      "benign": {
+        "status": "TODO_NOT_CAPTURED",
+        "path": null
+      }
+    },
+    {
+      "rule_id": "5ccc1296-0de7-4bdd-830b-cd001d522d62",
+      "rule": "rules/defense-impairment/windows_security_log_cleared.yml",
+      "behavior_positive": {
+        "status": "TODO_NOT_CAPTURED",
+        "path": null
+      },
+      "benign": {
+        "status": "TODO_NOT_CAPTURED",
+        "path": null
+      }
+    },
+    {
+      "rule_id": "5c3d4bc7-6aaa-432f-9533-a64f022361c7",
+      "rule": "rules/lateral-movement/sshd_accepted_authentication.yml",
+      "behavior_positive": {
+        "status": "TODO_NOT_CAPTURED",
+        "path": null
+      },
+      "benign": {
+        "status": "TODO_NOT_CAPTURED",
+        "path": null
+      }
+    },
+    {
+      "rule_id": "bb93d416-1398-404f-9529-4445f67d5252",
+      "rule": "rules/persistence/cron_path_write_auditd.yml",
+      "behavior_positive": {
+        "status": "TODO_NOT_CAPTURED",
+        "path": null
+      },
+      "benign": {
+        "status": "TODO_NOT_CAPTURED",
+        "path": null
+      }
+    },
+    {
+      "rule_id": "04ed2bf8-a283-4959-86bf-42622eceb94d",
+      "rule": "rules/persistence/startup_folder_file_drop.yml",
+      "behavior_positive": {
+        "status": "TODO_NOT_CAPTURED",
+        "path": null
+      },
+      "benign": {
+        "status": "TODO_NOT_CAPTURED",
+        "path": null
+      }
+    },
+    {
+      "rule_id": "3e042f0e-2186-4908-a42d-57652408236c",
+      "rule": "rules/persistence/windows_service_creation_command.yml",
+      "behavior_positive": {
+        "status": "TODO_NOT_CAPTURED",
+        "path": null
+      },
+      "benign": {
+        "status": "TODO_NOT_CAPTURED",
+        "path": null
+      }
+    },
+    {
+      "rule_id": "0043991a-74a7-4d06-b70d-910fee76339e",
+      "rule": "rules/privilege-escalation/sudo_command_as_root.yml",
+      "behavior_positive": {
+        "status": "TODO_NOT_CAPTURED",
+        "path": null
+      },
+      "benign": {
+        "status": "TODO_NOT_CAPTURED",
+        "path": null
+      }
+    },
+    {
+      "rule_id": "59618ca7-1597-4cd0-93a3-aab14b7f3729",
+      "rule": "rules/privilege-escalation/user_added_local_admins.yml",
+      "behavior_positive": {
+        "status": "TODO_NOT_CAPTURED",
+        "path": null
+      },
+      "benign": {
+        "status": "TODO_NOT_CAPTURED",
+        "path": null
+      }
+    },
+    {
+      "rule_id": "6d762506-d297-4617-9033-719f3440f37d",
+      "rule": "rules/stealth/file_creation_time_changed.yml",
+      "behavior_positive": {
+        "status": "TODO_NOT_CAPTURED",
+        "path": null
+      },
+      "benign": {
+        "status": "TODO_NOT_CAPTURED",
+        "path": null
+      }
+    },
+    {
+      "rule_id": "58847aa6-96d4-4a87-a61d-085125c92d00",
+      "rule": "correlations/windows_repeated_network_logon_failures.yml",
+      "behavior_positive": {
+        "status": "TODO_NOT_CAPTURED",
+        "path": null
+      },
+      "benign": {
+        "status": "TODO_NOT_CAPTURED",
+        "path": null
+      }
+    }
+  ]
+}

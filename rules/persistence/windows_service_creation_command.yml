@@ -1,0 +1,33 @@
+title: Windows Service Creation Command
+id: 3e042f0e-2186-4908-a42d-57652408236c
+status: experimental
+description: |
+    Detects sc.exe create or a New-Service token in a PowerShell process command line.
+    The command can fail or contain quoted script text; service creation and execution
+    are not established. In-process, encoded, and remote API calls can evade this selector.
+references:
+    - https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/sc-create
+    - https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.management/new-service
+author: jawsec
+date: 2026-04-01
+modified: 2026-09-17
+tags:
+    - attack.persistence
+    - attack.privilege-escalation
+    - attack.t1543.003
+logsource:
+    category: process_creation
+    product: windows
+detection:
+    selection_sc:
+        Image|endswith: '\sc.exe'
+        CommandLine|contains: ' create '
+    selection_ps:
+        Image|endswith:
+            - '\powershell.exe'
+            - '\pwsh.exe'
+        CommandLine|contains: New-Service
+    condition: 1 of selection_*
+falsepositives:
+    - Software installers and approved administrators creating services
+level: low

@@ -1,0 +1,39 @@
+name: Kino Sentinel WindowsEvent and Syslog
+priority: 30
+transformations:
+    - id: linux_fields
+      type: field_name_mapping
+      mapping:
+          message: SyslogMessage
+          type: AuditType
+          key: AuditKey
+          success: AuditSuccess
+      rule_conditions:
+          - type: logsource
+            product: linux
+postprocessing:
+    - type: template
+      template: |-
+          WindowsEvent
+          | where Channel == "{{ 'Security' if rule.logsource.service == 'security' else 'Microsoft-Windows-Sysmon/Operational' }}"
+          {% set events = {'process_creation':1, 'file_change':2, 'file_event':11, 'dns_query':22} %}
+          {% if rule.logsource.category %}| where EventID == {{ events[rule.logsource.category] }}
+          {% endif %}| extend Image=tostring(EventData.Image), CommandLine=tostring(EventData.CommandLine),
+                   TargetFilename=tostring(EventData.TargetFilename), QueryName=tostring(EventData.QueryName),
+                   TargetSid=tostring(EventData.TargetSid), IpAddress=tostring(EventData.IpAddress),
+                   LogonType=toint(EventData.LogonType)
+          | where {{ query }}
+      rule_conditions:
+          - type: logsource
+            product: windows
+    - type: template
+      template: |-
+          Syslog
+          | where ProcessName =~ "{{ rule.logsource.service }}"
+          {% if rule.logsource.service == 'auditd' %}| extend AuditType=extract(@"(?:^|\s)type=(\S+)", 1, SyslogMessage),
+                   AuditKey=extract(@'(?:^|\s)key="?([^"\s]+)', 1, SyslogMessage),
+                   AuditSuccess=extract(@"(?:^|\s)success=(\S+)", 1, SyslogMessage)
+          {% endif %}| where {{ query }}
+      rule_conditions:
+          - type: logsource
+            product: linux
